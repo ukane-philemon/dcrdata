@@ -238,6 +238,30 @@ func (pgb *ChainDB) SyncChainDB(ctx context.Context, client rpcutils.BlockFetche
 	stage := 1
 	log.Infof("Beginning SYNC STAGE %d of %d (block data import).", stage, stages)
 
+	fastForwardStakeDB := func(stakeDBHeight, pgbHeight int64) (int64, error) {
+		for ib := stakeDBHeight + 1; ib <= pgbHeight; ib++ {
+			// Check for quit signal.
+			select {
+			case <-ctx.Done():
+				return ib - 1, fmt.Errorf("Updating stakeDB sync cancelled at height %d", ib)
+			default:
+			}
+
+			// Get the block. Ignore the hash.
+			block, blockHash, err := rpcutils.GetBlock(ib, client)
+			if err != nil {
+				return ib - 1, fmt.Errorf("GetBlock failed (%s): %v", blockHash, err)
+			}
+
+			// Advance stakeDB
+			err = pgb.stakeDB.ConnectBlock(block)
+			if err != nil {
+				return ib - 1, pgb.supplementUnknownTicketError(err)
+			}
+		}
+		return pgbHeight - 1, nil
+	}
+
 	importBlocks := func(start int64) (int64, error) {
 		for ib := start; ib <= nodeHeight; ib++ {
 			// Check for quit signal.
@@ -304,14 +328,20 @@ func (pgb *ChainDB) SyncChainDB(ctx context.Context, client rpcutils.BlockFetche
 			// code in this function.
 			if ib > stakeDBHeight {
 				behind := ib - stakeDBHeight
-				if behind != 1 {
-					panic(fmt.Sprintf("About to connect the wrong block: %d, %d\n"+
-						"The stake database is corrupted. "+
-						"Restart with --purge-n-blocks=%d to recover.",
-						ib, stakeDBHeight, 2*behind))
-				}
-				if err = pgb.stakeDB.ConnectBlock(block); err != nil {
-					return ib - 1, pgb.supplementUnknownTicketError(err)
+				if behind > 1 {
+					// Trying to catch-up if stakeDB is behind.
+					fastForwardStakeDBStart := time.Now()
+					log.Infof("Fast-forwarding StakeDatabase from %d to %d...", stakeDBHeight, ib)
+
+					stakeDBHeight, err = fastForwardStakeDB(stakeDBHeight, ib)
+					if err != nil {
+						return ib - 1, fmt.Errorf("Catching up with primary db failed at %d:%w", ib, err)
+					}
+					log.Infof("Time taken to update stakeDB to primary DB height:%d/sec", int64(time.Since(fastForwardStakeDBStart).Seconds()))
+				} else {
+					if err = pgb.stakeDB.ConnectBlock(block); err != nil {
+						return ib - 1, pgb.supplementUnknownTicketError(err)
+					}
 				}
 			}
 			stakeDBHeight = int64(pgb.stakeDB.Height()) // i
@@ -397,7 +427,7 @@ func (pgb *ChainDB) SyncChainDB(ctx context.Context, client rpcutils.BlockFetche
 		// invalidated and the transactions are subsequently re-mined in another
 		// block. Remove these before indexing.
 		log.Infof("Finding and removing duplicate table rows before indexing...")
-		if err = pgb.DeleteDuplicates(barLoad); err != nil {
+		if err = pgb.DeleteDuplicatesRecovery(barLoad); err != nil {
 			return 0, err
 		}
 

@@ -82,17 +82,17 @@ const (
 		LIMIT  1;`
 
 	// IndexBlockTableOnHash creates the unique index uix_block_hash on (hash).
-	IndexBlockTableOnHash   = `CREATE UNIQUE INDEX ` + IndexOfBlocksTableOnHash + ` ON blocks(hash);`
+	IndexBlockTableOnHash   = `CREATE UNIQUE INDEX IF NOT EXISTS ` + IndexOfBlocksTableOnHash + ` ON blocks(hash);`
 	DeindexBlockTableOnHash = `DROP INDEX ` + IndexOfBlocksTableOnHash + ` CASCADE;`
 
 	// IndexBlocksTableOnHeight creates the index uix_block_height on (height).
 	// This is not unique because of side chains.
-	IndexBlocksTableOnHeight   = `CREATE INDEX ` + IndexOfBlocksTableOnHeight + ` ON blocks(height);`
+	IndexBlocksTableOnHeight   = `CREATE INDEX IF NOT EXISTS  ` + IndexOfBlocksTableOnHeight + ` ON blocks(height);`
 	DeindexBlocksTableOnHeight = `DROP INDEX ` + IndexOfBlocksTableOnHeight + ` CASCADE;`
 
 	// IndexBlocksTableOnHeight creates the index uix_block_time on (time).
 	// This is not unique because of side chains.
-	IndexBlocksTableOnTime   = `CREATE INDEX ` + IndexOfBlocksTableOnTime + ` ON blocks("time");`
+	IndexBlocksTableOnTime   = `CREATE INDEX IF NOT EXISTS ` + IndexOfBlocksTableOnTime + ` ON blocks("time");`
 	DeindexBlocksTableOnTime = `DROP INDEX ` + IndexOfBlocksTableOnTime + ` CASCADE;`
 
 	SelectBlockByTimeRangeSQL = `SELECT hash, height, size, time, numtx
