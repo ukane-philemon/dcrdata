@@ -16,7 +16,7 @@
                   {{block "abandoned" .}}
                     <div class="fs22">{{.Name}}</div>
                     <div class="fs18 fw-bold py-2">Proposal abandoned</div>
-                    <div class="pb-2">This proposal was designated abandoned {{TimeConversion .AbandonedAt}}.</div>
+                    <div class="pb-2">This proposal was designated abandoned on {{TimeConversion .AbandonedAt}}.</div>
                   {{end}}
                 {{else}}
                   Invalid proposal: {{.Name}}

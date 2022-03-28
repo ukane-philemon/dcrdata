@@ -6,7 +6,7 @@ package main
 
 import (
 	"context"
-	"errors"
+	//"errors"
 	"fmt"
 	"net"
 	"net/http"
@@ -371,8 +371,8 @@ func _main(ctx context.Context) error {
 	// Estimate how far chainDB is behind the node.
 	blocksBehind := expectedHeight - lastBlockPG
 	if blocksBehind < 0 {
-		return fmt.Errorf("Node is still syncing. Node height = %d, "+
-			"DB height = %d", expectedHeight, heightDB)
+		//return fmt.Errorf("Node is still syncing. Node height = %d, "+
+		//	"DB height = %d", expectedHeight, heightDB)
 	}
 
 	// PG gets winning tickets out of baseDB's pool info cache, so it must
@@ -571,54 +571,55 @@ func _main(ctx context.Context) error {
 	// Initiate the sync status monitor and the coordinating goroutines if the
 	// sync status is activated, otherwise coordinate updating the full set of
 	// explorer pages.
-	if displaySyncStatusPage {
+	if !displaySyncStatusPage {
 		// Start goroutines that keep the update the shared progress bar data,
 		// and signal the websocket hub to send progress updates to clients.
 		barLoad = make(chan *dbtypes.ProgressBarLoad, 2)
 		explore.BeginSyncStatusUpdates(barLoad)
-	} else {
-		// Start a goroutine to update the explorer pages when the DB sync
-		// functions send a new block hash on the following channel.
-		latestBlockHash = make(chan *chainhash.Hash, 2)
-
-		// The BlockConnected handler should not be started until after sync.
-		go func() {
-			// Keep receiving updates until the channel is closed, or a nil Hash
-			// pointer received.
-			for hash := range latestBlockHash {
-				if hash == nil {
-					return
-				}
-				// Fetch the blockdata by block hash.
-				d, msgBlock, err := collector.CollectHash(hash)
-				if err != nil {
-					log.Warnf("failed to fetch blockdata for (%s) hash. error: %v",
-						hash.String(), err)
-					continue
-				}
-
-				// Store the blockdata for the explorer pages.
-				if err = explore.Store(d, msgBlock); err != nil {
-					log.Warnf("failed to store (%s) hash's blockdata for the explorer pages error: %v",
-						hash.String(), err)
-				}
-			}
-		}()
-
-		// Before starting the DB sync, trigger the explorer to display data for
-		// the current best block.
-
-		// Retrieve the hash of the best block across every DB.
-		latestDBBlockHash, err := dcrdClient.GetBlockHash(ctx, chainDBHeight)
-		if err != nil {
-			return fmt.Errorf("failed to fetch the block at height (%d): %v",
-				chainDBHeight, err)
-		}
-
-		// Signal to load this block's data into the explorer. Future signals
-		// will come from the sync methods of ChainDB.
-		latestBlockHash <- latestDBBlockHash
 	}
+	// } else {
+	// 	// Start a goroutine to update the explorer pages when the DB sync
+	// 	// functions send a new block hash on the following channel.
+	// 	latestBlockHash = make(chan *chainhash.Hash, 2)
+
+	// 	// The BlockConnected handler should not be started until after sync.
+	// 	go func() {
+	// 		// Keep receiving updates until the channel is closed, or a nil Hash
+	// 		// pointer received.
+	// 		for hash := range latestBlockHash {
+	// 			if hash == nil {
+	// 				return
+	// 			}
+	// 			// Fetch the blockdata by block hash.
+	// 			d, msgBlock, err := collector.CollectHash(hash)
+	// 			if err != nil {
+	// 				log.Warnf("failed to fetch blockdata for (%s) hash. error: %v",
+	// 					hash.String(), err)
+	// 				continue
+	// 			}
+
+	// 			// Store the blockdata for the explorer pages.
+	// 			if err = explore.Store(d, msgBlock); err != nil {
+	// 				log.Warnf("failed to store (%s) hash's blockdata for the explorer pages error: %v",
+	// 					hash.String(), err)
+	// 			}
+	// 		}
+	// 	}()
+
+	// 	// Before starting the DB sync, trigger the explorer to display data for
+	// 	// the current best block.
+
+	// 	// Retrieve the hash of the best block across every DB.
+	// 	latestDBBlockHash, err := dcrdClient.GetBlockHash(ctx, chainDBHeight)
+	// 	if err != nil {
+	// 		return fmt.Errorf("failed to fetch the block at height (%d): %v",
+	// 			chainDBHeight, err)
+	// 	}
+
+	// 	// Signal to load this block's data into the explorer. Future signals
+	// 	// will come from the sync methods of ChainDB.
+	// 	latestBlockHash <- latestDBBlockHash
+	// }
 
 	// Create the Insight socket.io server, and add it to block savers if in
 	// full/pg mode. Since insightSocketServer is added into the url before even
@@ -788,44 +789,44 @@ func _main(ctx context.Context) error {
 
 	log.Infof("Starting blockchain sync...")
 
-	syncChainDB := func() (int64, error) {
-		// Use the plain rpcclient.Client or a rpcutils.BlockPrefetchClient.
-		var bf rpcutils.BlockFetcher
-		if cfg.NoBlockPrefetch {
-			bf = dcrdClient
-		} else {
-			pfc := rpcutils.NewBlockPrefetchClient(dcrdClient)
-			defer func() {
-				pfc.Stop()
-				log.Debugf("Block prefetcher hits = %d, misses = %d.",
-					pfc.Hits(), pfc.Misses())
-			}()
-			bf = pfc
-		}
+	// syncChainDB := func() (int64, error) {
+	// 	// Use the plain rpcclient.Client or a rpcutils.BlockPrefetchClient.
+	// 	var bf rpcutils.BlockFetcher
+	// 	if cfg.NoBlockPrefetch {
+	// 		bf = dcrdClient
+	// 	} else {
+	// 		pfc := rpcutils.NewBlockPrefetchClient(dcrdClient)
+	// 		defer func() {
+	// 			pfc.Stop()
+	// 			log.Debugf("Block prefetcher hits = %d, misses = %d.",
+	// 				pfc.Hits(), pfc.Misses())
+	// 		}()
+	// 		bf = pfc
+	// 	}
 
-		// Now that stakedb is either catching up or waiting for a block, start
-		// the chainDB sync, which is the master block getter, retrieving and
-		// making available blocks to the baseDB. In return, baseDB maintains a
-		// StakeDatabase at the best block's height. For a detailed description
-		// on how the DBs' synchronization is coordinated, see the documents in
-		// db/dcrpg/sync.go.
-		height, err := chainDB.SyncChainDB(ctx, bf, updateAllAddresses,
-			newPGIndexes, latestBlockHash, barLoad)
-		if err != nil {
-			if !errors.Is(err, context.Canceled) {
-				requestShutdown()
-			}
-			log.Errorf("dcrpg.SyncChainDB failed at height %d.", height)
-			return height, err
-		}
-		app.Status.SetHeight(uint32(height))
-		return height, nil
-	}
+	// 	// Now that stakedb is either catching up or waiting for a block, start
+	// 	// the chainDB sync, which is the master block getter, retrieving and
+	// 	// making available blocks to the baseDB. In return, baseDB maintains a
+	// 	// StakeDatabase at the best block's height. For a detailed description
+	// 	// on how the DBs' synchronization is coordinated, see the documents in
+	// 	// db/dcrpg/sync.go.
+	// 	height, err := chainDB.SyncChainDB(ctx, bf, updateAllAddresses,
+	// 		newPGIndexes, latestBlockHash, barLoad)
+	// 	if err != nil {
+	// 		if !errors.Is(err, context.Canceled) {
+	// 			requestShutdown()
+	// 		}
+	// 		log.Errorf("dcrpg.SyncChainDB failed at height %d.", height)
+	// 		return height, err
+	// 	}
+	// 	app.Status.SetHeight(uint32(height))
+	// 	return height, nil
+	// }
 
-	chainDBHeight, err = syncChainDB()
-	if err != nil {
-		return err
-	}
+	// chainDBHeight, err = syncChainDB()
+	// if err != nil {
+	// 	return err
+	// }
 
 	// After sync and indexing, must use upsert statement, which checks for
 	// duplicate entries and updates instead of erroring. SyncChainDB should
@@ -834,96 +835,96 @@ func _main(ctx context.Context) error {
 
 	// Ensure all side chains known by dcrd are also present in the DB and
 	// import them if they are not already there.
-	if cfg.ImportSideChains {
-		// First identify the side chain blocks that are missing from the DB.
-		log.Info("Retrieving side chain blocks from dcrd...")
-		sideChainBlocksToStore, nSideChainBlocks, err := chainDB.MissingSideChainBlocks()
-		if err != nil {
-			return fmt.Errorf("Unable to determine missing side chain blocks: %v", err)
-		}
-		nSideChains := len(sideChainBlocksToStore)
+	// if cfg.ImportSideChains {
+	// 	// First identify the side chain blocks that are missing from the DB.
+	// 	log.Info("Retrieving side chain blocks from dcrd...")
+	// 	sideChainBlocksToStore, nSideChainBlocks, err := chainDB.MissingSideChainBlocks()
+	// 	if err != nil {
+	// 		return fmt.Errorf("Unable to determine missing side chain blocks: %v", err)
+	// 	}
+	// 	nSideChains := len(sideChainBlocksToStore)
 
-		// Importing side chain blocks involves only the aux (postgres) DBs
-		// since stakedb only supports mainchain. TODO: Get stakedb to work with
-		// side chain blocks to get ticket pool info.
+	// 	// Importing side chain blocks involves only the aux (postgres) DBs
+	// 	// since stakedb only supports mainchain. TODO: Get stakedb to work with
+	// 	// side chain blocks to get ticket pool info.
 
-		// Collect and store data for each side chain.
-		log.Infof("Importing %d new block(s) from %d known side chains...",
-			nSideChainBlocks, nSideChains)
-		// Disable recomputing project fund balance, and clearing address
-		// balance and counts cache.
-		chainDB.InBatchSync = true
-		var sideChainsStored, sideChainBlocksStored int
-		for _, sideChain := range sideChainBlocksToStore {
-			// Process this side chain only if there are blocks in it that need
-			// to be stored.
-			if len(sideChain.Hashes) == 0 {
-				continue
-			}
-			sideChainsStored++
+	// 	// Collect and store data for each side chain.
+	// 	log.Infof("Importing %d new block(s) from %d known side chains...",
+	// 		nSideChainBlocks, nSideChains)
+	// 	// Disable recomputing project fund balance, and clearing address
+	// 	// balance and counts cache.
+	// 	chainDB.InBatchSync = true
+	// 	var sideChainsStored, sideChainBlocksStored int
+	// 	for _, sideChain := range sideChainBlocksToStore {
+	// 		// Process this side chain only if there are blocks in it that need
+	// 		// to be stored.
+	// 		if len(sideChain.Hashes) == 0 {
+	// 			continue
+	// 		}
+	// 		sideChainsStored++
 
-			// Collect and store data for each block in this side chain.
-			for _, hash := range sideChain.Hashes {
-				// Validate the block hash.
-				blockHash, err := chainhash.NewHashFromStr(hash)
-				if err != nil {
-					log.Errorf("Invalid block hash %s: %v.", hash, err)
-					continue
-				}
+	// 		// Collect and store data for each block in this side chain.
+	// 		for _, hash := range sideChain.Hashes {
+	// 			// Validate the block hash.
+	// 			blockHash, err := chainhash.NewHashFromStr(hash)
+	// 			if err != nil {
+	// 				log.Errorf("Invalid block hash %s: %v.", hash, err)
+	// 				continue
+	// 			}
 
-				// Collect block data.
-				_, msgBlock, err := collector.CollectHash(blockHash)
-				if err != nil {
-					// Do not quit if unable to collect side chain block data.
-					log.Errorf("Unable to collect data for side chain block %s: %v.",
-						hash, err)
-					continue
-				}
+	// 			// Collect block data.
+	// 			_, msgBlock, err := collector.CollectHash(blockHash)
+	// 			if err != nil {
+	// 				// Do not quit if unable to collect side chain block data.
+	// 				log.Errorf("Unable to collect data for side chain block %s: %v.",
+	// 					hash, err)
+	// 				continue
+	// 			}
 
-				// Get the chainwork
-				chainWork, err := rpcutils.GetChainWork(chainDB.Client, blockHash)
-				if err != nil {
-					log.Errorf("GetChainWork failed (%s): %v", blockHash, err)
-					continue
-				}
+	// 			// Get the chainwork
+	// 			chainWork, err := rpcutils.GetChainWork(chainDB.Client, blockHash)
+	// 			if err != nil {
+	// 				log.Errorf("GetChainWork failed (%s): %v", blockHash, err)
+	// 				continue
+	// 			}
 
-				// Main DB
-				log.Debugf("Importing block %s (height %d) into DB.",
-					blockHash, msgBlock.Header.Height)
+	// 			// Main DB
+	// 			log.Debugf("Importing block %s (height %d) into DB.",
+	// 				blockHash, msgBlock.Header.Height)
 
-				// Stake invalidation is always handled by subsequent block, so
-				// add the block as valid. These are all side chain blocks.
-				isValid, isMainchain := true, false
+	// 			// Stake invalidation is always handled by subsequent block, so
+	// 			// add the block as valid. These are all side chain blocks.
+	// 			isValid, isMainchain := true, false
 
-				// Existing DB records might be for mainchain and/or valid
-				// blocks, so these imported blocks should not data in rows that
-				// are conflicting as per the different table constraints and
-				// unique indexes.
-				updateExistingRecords := false
+	// 			// Existing DB records might be for mainchain and/or valid
+	// 			// blocks, so these imported blocks should not data in rows that
+	// 			// are conflicting as per the different table constraints and
+	// 			// unique indexes.
+	// 			updateExistingRecords := false
 
-				// Store data in the DB.
-				_, _, _, err = chainDB.StoreBlock(msgBlock, isValid, isMainchain,
-					updateExistingRecords, true, chainWork)
-				if err != nil {
-					// If data collection succeeded, but storage fails, bail out
-					// to diagnose the DB trouble.
-					return fmt.Errorf("ChainDB.StoreBlock failed: %w", err)
-				}
+	// 			// Store data in the DB.
+	// 			_, _, _, err = chainDB.StoreBlock(msgBlock, isValid, isMainchain,
+	// 				updateExistingRecords, true, chainWork)
+	// 			if err != nil {
+	// 				// If data collection succeeded, but storage fails, bail out
+	// 				// to diagnose the DB trouble.
+	// 				return fmt.Errorf("ChainDB.StoreBlock failed: %w", err)
+	// 			}
 
-				sideChainBlocksStored++
-			}
-		}
-		chainDB.InBatchSync = false
-		log.Infof("Successfully added %d blocks from %d side chains into dcrpg DB.",
-			sideChainBlocksStored, sideChainsStored)
-	}
+	// 			sideChainBlocksStored++
+	// 		}
+	// 	}
+	// 	chainDB.InBatchSync = false
+	// 	log.Infof("Successfully added %d blocks from %d side chains into dcrpg DB.",
+	// 		sideChainBlocksStored, sideChainsStored)
+	// }
 
-	// Exits immediately after the sync completes if SyncAndQuit is to true
-	// because all we needed then was the blockchain sync be completed successfully.
-	if cfg.SyncAndQuit {
-		log.Infof("All ready, at height %d. Quitting.", chainDBHeight)
-		return nil
-	}
+	// // Exits immediately after the sync completes if SyncAndQuit is to true
+	// // because all we needed then was the blockchain sync be completed successfully.
+	// if cfg.SyncAndQuit {
+	// 	log.Infof("All ready, at height %d. Quitting.", chainDBHeight)
+	// 	return nil
+	// }
 
 	// Pre-populate charts data using the dumped cache data in the .gob file
 	// path provided instead of querying the data from the dbs. Should be
@@ -1030,23 +1031,23 @@ func _main(ctx context.Context) error {
 	// After this final node sync check, the monitors will handle new blocks.
 	// TODO: make this not racy at all by having notifiers register first, but
 	// enable operation on signal of sync complete.
-	nodeHeight, chainDBHeight, err = Heights()
-	if err != nil {
-		return fmt.Errorf("Heights failed: %w", err)
-	}
-	if nodeHeight != chainDBHeight {
-		log.Infof("Initial chain DB sync complete. Now catching up with network...")
-		newPGIndexes, updateAllAddresses = false, false
-		chainDBHeight, err = syncChainDB()
-		if err != nil {
-			return err
-		}
-	}
+	// nodeHeight, chainDBHeight, err = Heights()
+	// if err != nil {
+	// 	return fmt.Errorf("Heights failed: %w", err)
+	// }
+	// if nodeHeight != chainDBHeight {
+	// 	log.Infof("Initial chain DB sync complete. Now catching up with network...")
+	// 	newPGIndexes, updateAllAddresses = false, false
+	// 	chainDBHeight, err = syncChainDB()
+	// 	if err != nil {
+	// 		return err
+	// 	}
+	// }
 
 	// Set the current best block in the collection queue so that it can verify
 	// that subsequent blocks are in the correct sequence.
-	bestHash, bestHeight := chainDB.BestBlock()
-	notifier.SetPreviousBlock(*bestHash, uint32(bestHeight))
+	// bestHash, bestHeight := chainDB.BestBlock()
+	// notifier.SetPreviousBlock(*bestHash, uint32(bestHeight))
 
 	// Register for notifications from dcrd. This also sets the daemon RPC
 	// client used by other functions in the notify/notification package (i.e.
@@ -1066,24 +1067,24 @@ func _main(ctx context.Context) error {
 
 	// Initial data summary for web ui and pubsubhub. Normally the notification
 	// handlers will do Collect followed by Store.
-	{
-		blockData, msgBlock, err := collector.Collect()
-		if err != nil {
-			return fmt.Errorf("Block data collection for initial summary failed: %w", err)
-		}
+	// {
+	// 	blockData, msgBlock, err := collector.Collect()
+	// 	if err != nil {
+	// 		return fmt.Errorf("Block data collection for initial summary failed: %w", err)
+	// 	}
 
-		// Update the current chain state in the ChainDB.
-		chainDB.UpdateChainState(blockData.BlockchainInfo)
-		log.Infof("Current DCP0010 activation height is %d.", chainDB.DCP0010ActivationHeight())
+	// 	// Update the current chain state in the ChainDB.
+	// 	chainDB.UpdateChainState(blockData.BlockchainInfo)
+	// 	log.Infof("Current DCP0010 activation height is %d.", chainDB.DCP0010ActivationHeight())
 
-		if err = explore.Store(blockData, msgBlock); err != nil {
-			return fmt.Errorf("Failed to store initial block data for explorer pages: %w", err)
-		}
+	// 	if err = explore.Store(blockData, msgBlock); err != nil {
+	// 		return fmt.Errorf("Failed to store initial block data for explorer pages: %w", err)
+	// 	}
 
-		if err = psHub.Store(blockData, msgBlock); err != nil {
-			return fmt.Errorf("Failed to store initial block data with the PubSubHub: %w", err)
-		}
-	}
+	// 	if err = psHub.Store(blockData, msgBlock); err != nil {
+	// 		return fmt.Errorf("Failed to store initial block data with the PubSubHub: %w", err)
+	// 	}
+	// }
 
 	wg.Wait()
 
