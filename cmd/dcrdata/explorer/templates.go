@@ -325,6 +325,14 @@ func formattedDuration(duration time.Duration, str *periodMap) string {
 	return i(durationsec) + pl(str.s, durationsec)
 }
 
+func timeConversion(a uint64) string {
+	if a == 0 {
+		return "N/A"
+	}
+	dateTime := time.Unix(int64(a), 0).UTC()
+	return dateTime.Format("2006-01-02 15:04:05 MST")
+}
+
 func makeTemplateFuncMap(params *chaincfg.Params) template.FuncMap {
 	netTheme := "theme-" + strings.ToLower(netName(params))
 
@@ -460,13 +468,7 @@ func makeTemplateFuncMap(params *chaincfg.Params) template.FuncMap {
 			result = int(a) * b
 			return
 		},
-		"TimeConversion": func(a uint64) string {
-			if a == 0 {
-				return "N/A"
-			}
-			dateTime := time.Unix(int64(a), 0).UTC()
-			return dateTime.Format("2006-01-02 15:04:05 MST")
-		},
+		"TimeConversion": timeConversion,
 		"dateTimeWithoutTimeZone": func(a uint64) string {
 			if a == 0 {
 				return "N/A"

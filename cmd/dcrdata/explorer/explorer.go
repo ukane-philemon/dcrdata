@@ -223,9 +223,10 @@ type explorerUI struct {
 	displaySyncStatusPage atomic.Value
 	politeiaURL           string
 
-	invsMtx sync.RWMutex
-	invs    *types.MempoolInfo
-	premine int64
+	invsMtx        sync.RWMutex
+	invs           *types.MempoolInfo
+	premine        int64
+	maxTSpendCache map[string]float64
 }
 
 // AreDBsSyncing is a thread-safe way to fetch the boolean in dbsSyncing.
@@ -333,6 +334,7 @@ func New(cfg *ExplorerConfig) *explorerUI {
 	exp.NetName = netName(exp.ChainParams)
 	exp.MeanVotingBlocks = txhelpers.CalcMeanVotingBlocks(params)
 	exp.premine = params.BlockOneSubsidy()
+	exp.maxTSpendCache = make(map[string]float64)
 
 	// Development subsidy address of the current network
 	devSubsidyAddress, err := dbtypes.DevSubsidyAddress(params)

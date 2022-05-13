@@ -760,6 +760,27 @@ type TreasurySpendVotes struct {
 	NoVotes   int64  `json:"novotes"`
 }
 
+// TreasurySpendMetaData extends TreasurySpendVotes and contains some
+// status-dependent data representations for display purposes.
+type TreasurySpendMetaData struct {
+	VoteStartBlockHeight int64
+	VoteEndBlockHeight   int64
+	YesVotes             int64
+	NoVotes              int64
+	PoliteiaKey          string
+	Approved             bool
+	TotalVotes           int64
+	QuorumCount          int64
+	QuorumAchieved       bool
+	Approval             float32
+	Rejection            float32
+	PassPercent          float32
+	VoteStartDate        string
+	VoteEndDate          string
+	MaxVotes             int64
+	MaxTspend            float64
+}
+
 // BlockChainData defines data holding the latest block chain state from the
 // getblockchaininfo rpc endpoint.
 type BlockChainData struct {
@@ -1845,7 +1866,7 @@ type VinTxProperty struct {
 	TxType      int16   `json:"tx_type"`
 	BlockHeight uint32  `json:"blockheight"`
 	BlockIndex  uint32  `json:"blockindex"`
-	ScriptHex   []byte  `json:"scripthex"`
+	ScriptSig   []byte  `json:"scriptSig"`
 	IsValid     bool    `json:"is_valid"`
 	IsMainchain bool    `json:"is_mainchain"`
 	Time        TimeDef `json:"time"`

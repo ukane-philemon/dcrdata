@@ -981,7 +981,7 @@ func (exp *explorerUI) TxPage(w http.ResponseWriter, r *http.Request) {
 			}
 
 			// If the scriptsig does not decode or disassemble, oh well.
-			asm, _ := txscript.DisasmString(vins[iv].ScriptHex)
+			asm, _ := txscript.DisasmString(vins[iv].ScriptSig)
 
 			txIndex := vins[iv].TxIndex
 			amount := dcrutil.Amount(vins[iv].ValueIn).ToCoin()
@@ -1013,7 +1013,7 @@ func (exp *explorerUI) TxPage(w http.ResponseWriter, r *http.Request) {
 					BlockIndex:    tx.BlockIndex,
 					ScriptSig: &chainjson.ScriptSig{
 						Asm: asm,
-						Hex: hex.EncodeToString(vins[iv].ScriptHex),
+						Hex: hex.EncodeToString(vins[iv].ScriptSig),
 					},
 				},
 				Addresses:       addresses,
@@ -1312,6 +1312,7 @@ func (exp *explorerUI) TxPage(w http.ResponseWriter, r *http.Request) {
 		HighlightInOut       string
 		HighlightInOutID     int64
 		SwapsFound           string
+		TSpendMeta           *dbtypes.TreasurySpendMetaData
 		Conversions          struct {
 			Total *exchanges.Conversion
 			Fees  *exchanges.Conversion
@@ -1326,6 +1327,89 @@ func (exp *explorerUI) TxPage(w http.ResponseWriter, r *http.Request) {
 		HighlightInOutID:     inoutid,
 		SwapsFound:           swapsInfo.Found,
 	}
+
+	if tx.IsTreasurySpend() {
+		meta := new(dbtypes.TreasurySpendMetaData)
+		exp.pageData.RLock()
+		tip := exp.pageData.BlockInfo.Height
+		exp.pageData.RUnlock()
+
+		startBlock := tx.TSpendTally.VoteStart
+		endBlock := tx.TSpendTally.VoteEnd
+		yesVotes := tx.TSpendTally.YesVotes
+		noVotes := tx.TSpendTally.NoVotes
+		totalVotes := yesVotes + noVotes
+		targetBlockTimeSec := int64(exp.ChainParams.TargetTimePerBlock / time.Second)
+
+		meta.MaxVotes = int64(uint64(exp.ChainParams.TicketsPerBlock) * exp.ChainParams.TreasuryVoteInterval * exp.ChainParams.TreasuryVoteIntervalMultiplier)
+		meta.QuorumCount = meta.MaxVotes * int64(exp.ChainParams.TreasuryVoteQuorumMultiplier) / int64(exp.ChainParams.TreasuryVoteQuorumDivisor)
+		meta.QuorumAchieved = totalVotes >= meta.QuorumCount
+		meta.YesVotes = yesVotes
+		meta.NoVotes = noVotes
+		meta.TotalVotes = totalVotes
+		meta.VoteStartBlockHeight = startBlock
+		meta.VoteEndBlockHeight = endBlock
+
+		var maxRemainingVotes int64
+		if endBlock > tip {
+			maxRemainingVotes = (tip - endBlock) * int64(exp.ChainParams.TicketsPerBlock)
+		}
+		requiredYesVotes := (totalVotes + maxRemainingVotes) * int64(exp.ChainParams.TreasuryVoteRequiredMultiplier) / int64(exp.ChainParams.TreasuryVoteRequiredDivisor)
+		meta.Approved = yesVotes >= requiredYesVotes
+		meta.PassPercent = float32(exp.ChainParams.TreasuryVoteRequiredMultiplier) / float32(exp.ChainParams.TreasuryVoteRequiredDivisor)
+
+		if totalVotes > 0 {
+			meta.Approval = float32(yesVotes) / float32(totalVotes)
+			meta.Rejection = 1 - meta.Approval
+		}
+
+		started := tip >= meta.VoteStartBlockHeight
+		finished := tip >= meta.VoteEndBlockHeight || meta.Approved
+		startTime := (meta.VoteStartBlockHeight - tip) * targetBlockTimeSec
+		meta.VoteStartDate = formattedDuration(time.Duration(startTime)*time.Second, shortPeriods)
+		endTime := (meta.VoteEndBlockHeight - tip) * targetBlockTimeSec
+		meta.VoteEndDate = formattedDuration(time.Duration(endTime)*time.Second, shortPeriods)
+		if started {
+			startTime, err = exp.dataSource.BlockTimeByHeight(meta.VoteStartBlockHeight)
+			if err != nil {
+				log.Errorf("Error fetching tspend start block time: %v", err)
+			}
+			meta.VoteStartDate = timeConversion(uint64(startTime))
+		}
+		if finished {
+			// Check if tspend vote was short circuited.
+			if tx.BlockHeight == 0 && meta.Approved {
+				// Tspend vote was short circuited but it has not been mined yet.
+				blockTilMined := exp.ChainParams.TreasuryVoteInterval - uint64(tip)%exp.ChainParams.TreasuryVoteInterval
+				secsTillMined := blockTilMined * uint64(targetBlockTimeSec)
+				meta.VoteEndDate = formattedDuration(time.Duration(secsTillMined)*time.Second, shortPeriods)
+			} else {
+				meta.VoteEndDate = timeConversion(uint64(tx.Time.UNIX()))
+			}
+		}
+
+		// Retrieve Public Key a.k.a Politieia key.
+		msgTx, err := exp.dataSource.GetTransactionByHash(tx.TxID)
+		if err != nil {
+			log.Errorf("GetRawTransaction failed for %s: %v", tx.TxID, err)
+		}
+		_, piKey, err := stake.CheckTSpend(msgTx)
+		if err != nil {
+			log.Errorf("Unable to retrieve tspend public key: %v", err)
+		}
+
+		// Fetch max treasury spend.
+		maxTSpend, found := exp.maxTSpendCache[tx.TxID]
+		if !found {
+			currentBlockInfo := exp.dataSource.GetExplorerBlock(tx.BlockHash)
+			maxTSpend = exp.maxTspendExpenditure(currentBlockInfo.PreviousHash)
+			exp.maxTSpendCache[tx.TxID] = maxTSpend
+		}
+		meta.MaxTspend = maxTSpend
+
+		meta.PoliteiaKey = hex.EncodeToString(piKey)
+		pageData.TSpendMeta = meta
+	} // tx.IsTreasurySpend()
 
 	// Get a fiat-converted value for the total and the fees.
 	if exp.xcBot != nil {
@@ -1343,6 +1427,67 @@ func (exp *explorerUI) TxPage(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Turbolinks-Location", r.URL.RequestURI())
 	w.WriteHeader(http.StatusOK)
 	io.WriteString(w, str)
+}
+
+// maxTreasuryExpenditure returns the maximum amount of funds that can
+// be spent from the treasury at the block after the provided node.
+func (exp *explorerUI) maxTspendExpenditure(preTVIBlockHash string) float64 {
+	policyWindow := exp.ChainParams.TreasuryVoteInterval *
+		exp.ChainParams.TreasuryVoteIntervalMultiplier *
+		exp.ChainParams.TreasuryExpenditureWindow
+
+	// Each policy window starts at a TVI block and ends at the block
+	// immediately prior to another TVI (inclusive of the preTVIBlockHash block).
+	//
+	// First: sum up tspends, tadds and tbases inside the most recent
+	// policyWindow.
+	spentRecent, addedRecent := exp.sumPastTreasuryChanges(preTVIBlockHash, policyWindow)
+
+	// Treasury can spend up to 150% the amount received in the previous
+	// window.
+	addedPlusAllowance := addedRecent + addedRecent/2
+
+	// The maximum expenditure allowed for the next block is the difference
+	// between the maximum possible and what has already been spent in the most
+	// recent policy window. This is capped at zero on the lower end to account
+	// for cases where the policy _already_ spent more than the allowed.
+	var allowedToSpend float64
+	if addedPlusAllowance > spentRecent {
+		allowedToSpend = addedPlusAllowance - spentRecent
+	}
+
+	return allowedToSpend
+}
+
+// sumPastTreasuryChanges sums up the amounts spent from and added to the
+// treasury (respectively) found within the range (node-nbBlocks..node).  Note
+// that this sum is _inclusive_ of the passed block and is performed in
+// descending order.  Generally, the passed node will be a node immediately
+// before a TVI block.
+func (exp *explorerUI) sumPastTreasuryChanges(preTVIBlockHash string, nbBlocks uint64) (float64, float64) {
+	block := exp.dataSource.GetExplorerBlock(preTVIBlockHash)
+	var spent, added float64
+	for i := uint64(0); i < nbBlocks && block != nil; i++ {
+		blk := exp.dataSource.GetExplorerBlock(block.Hash)
+		if blk == nil {
+			// Record doesn't exist. Means we reached the end of
+			// when treasury records are available.
+			block = nil
+			continue
+		}
+
+		// Range over values.
+		for _, tx := range blk.Treasury {
+			if tx.Type == txhelpers.TxTypeTreasurySpend {
+				spent += tx.Total + tx.Fees
+			} else {
+				added += tx.Total
+			}
+		}
+
+		block = exp.dataSource.GetExplorerBlock(block.PreviousHash)
+	}
+	return spent, added
 }
 
 func (exp *explorerUI) txAtomicSwapsInfo(tx *types.TxInfo) (*txhelpers.TxSwapResults, error) {
@@ -1408,8 +1553,7 @@ func (exp *explorerUI) TreasuryPage(w http.ResponseWriter, r *http.Request) {
 	ctx := context.WithValue(r.Context(), ctxAddress, exp.pageData.HomeInfo.DevAddress)
 	r = r.WithContext(ctx)
 	if queryVals := r.URL.Query(); queryVals.Get("txntype") == "" {
-		// TODO: Change default to "tspend" once there are some tspends.
-		queryVals.Set("txntype", "all")
+		queryVals.Set("txntype", "tspend")
 		r.URL.RawQuery = queryVals.Encode()
 	}
 
