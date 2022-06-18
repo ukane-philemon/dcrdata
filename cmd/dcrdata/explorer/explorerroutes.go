@@ -1352,15 +1352,18 @@ func (exp *explorerUI) TxPage(w http.ResponseWriter, r *http.Request) {
 
 		var maxRemainingVotes int64
 		if endBlock > tip {
-			maxRemainingVotes = (tip - endBlock) * int64(exp.ChainParams.TicketsPerBlock)
+			maxRemainingVotes = (endBlock - tip) * int64(exp.ChainParams.TicketsPerBlock)
 		}
+		meta.MaxRemainingVotes = maxRemainingVotes
+
 		requiredYesVotes := (totalVotes + maxRemainingVotes) * int64(exp.ChainParams.TreasuryVoteRequiredMultiplier) / int64(exp.ChainParams.TreasuryVoteRequiredDivisor)
+		meta.RequiredYesVotes = requiredYesVotes
+
 		meta.Approved = yesVotes >= requiredYesVotes
 		meta.PassPercent = float32(exp.ChainParams.TreasuryVoteRequiredMultiplier) / float32(exp.ChainParams.TreasuryVoteRequiredDivisor)
 
 		if totalVotes > 0 {
-			meta.Approval = float32(yesVotes) / float32(totalVotes)
-			meta.Rejection = 1 - meta.Approval
+			meta.Approval = float32(yesVotes) / float32(totalVotes+maxRemainingVotes)
 		}
 
 		started := tip >= meta.VoteStartBlockHeight
@@ -1378,7 +1381,7 @@ func (exp *explorerUI) TxPage(w http.ResponseWriter, r *http.Request) {
 		}
 		if finished {
 			// Check if tspend vote was short circuited.
-			if tx.BlockHeight == 0 && meta.Approved {
+			if tx.BlockHeight == 0 {
 				// Tspend vote was short circuited but it has not been mined yet.
 				blockTilMined := exp.ChainParams.TreasuryVoteInterval - uint64(tip)%exp.ChainParams.TreasuryVoteInterval
 				secsTillMined := blockTilMined * uint64(targetBlockTimeSec)
@@ -1399,13 +1402,13 @@ func (exp *explorerUI) TxPage(w http.ResponseWriter, r *http.Request) {
 		}
 
 		// Fetch max treasury spend.
-		maxTSpend, found := exp.maxTSpendCache[tx.TxID]
-		if !found {
-			currentBlockInfo := exp.dataSource.GetExplorerBlock(tx.BlockHash)
-			maxTSpend = exp.maxTspendExpenditure(currentBlockInfo.PreviousHash)
-			exp.maxTSpendCache[tx.TxID] = maxTSpend
-		}
-		meta.MaxTspend = maxTSpend
+		// maxTSpend, found := exp.maxTSpendCache[tx.TxID]
+		// if !found {
+		// 	currentBlockInfo := exp.dataSource.GetExplorerBlock(tx.BlockHash)
+		// 	maxTSpend = exp.maxTspendExpenditure(currentBlockInfo.PreviousHash)
+		// 	exp.maxTSpendCache[tx.TxID] = maxTSpend
+		// }
+		// meta.MaxTspend = maxTSpend
 
 		meta.PoliteiaKey = hex.EncodeToString(piKey)
 		pageData.TSpendMeta = meta

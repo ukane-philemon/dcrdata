@@ -763,22 +763,15 @@ type TreasurySpendVotes struct {
 // TreasurySpendMetaData extends TreasurySpendVotes and contains some
 // status-dependent data representations for display purposes.
 type TreasurySpendMetaData struct {
-	VoteStartBlockHeight int64
-	VoteEndBlockHeight   int64
-	YesVotes             int64
-	NoVotes              int64
-	PoliteiaKey          string
-	Approved             bool
-	TotalVotes           int64
-	QuorumCount          int64
-	QuorumAchieved       bool
-	Approval             float32
-	Rejection            float32
-	PassPercent          float32
-	VoteStartDate        string
-	VoteEndDate          string
-	MaxVotes             int64
-	MaxTspend            float64
+	VoteStartBlockHeight                int64
+	VoteEndBlockHeight                  int64
+	NoVotes, YesVotes                   int64
+	VoteStartDate, VoteEndDate          string
+	PoliteiaKey                         string
+	Approved, QuorumAchieved            bool
+	TotalVotes, MaxVotes, QuorumCount   int64
+	PassPercent, Approval               float32
+	MaxRemainingVotes, RequiredYesVotes int64
 }
 
 // BlockChainData defines data holding the latest block chain state from the
