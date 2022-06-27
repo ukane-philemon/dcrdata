@@ -317,9 +317,12 @@
                   <div>
                     <span class="fs18 lh1rem">Voting complete</span> &ndash;
                     {{if .Approved}}
-                      <span class="text-green">Approved</span>
+                      <span class="text-green">Approved</span>.
+                      {{if and .TVIBlockHeight .TVIEndDate}}
+                      <span>Next TVI: {{.TVIBlockHeight}} (~ {{formatDateTime .TVIEndDate}}).</span>
+                      {{end}}
                     {{else}}
-                      <span class="text-danger">Rejected</span>
+                      <span class="text-danger">Rejected</span>.
                     {{end}}
                   </div>
                 {{end}}              
@@ -394,7 +397,7 @@
                       ({{.MaxRemainingVotes}} remaining)
                    {{end}} votes
                    </td>
-                 {{if not $votingEnded}}
+                 {{if not (ge $tip .VoteEnd)}}
                    <td class="text-end medium-sans text-nowrap pe-2 py-2" >Vote Ends In:</td>
                    <td class="text-start py-1 text-secondary"> ~ {{formatDateTime .VoteEndDate}}</td>
                  {{else}}

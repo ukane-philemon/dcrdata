@@ -5945,7 +5945,8 @@ func (pgb *ChainDB) GetExplorerTx(txid string) *exptypes.TxInfo {
 				if tx.BlockHeight == 0 { // tspend yet to be mined, will go in next TVI block
 					blocksToNextTVI := pgb.chainParams.TreasuryVoteInterval - uint64(tipHeight)%pgb.chainParams.TreasuryVoteInterval
 					secsTillNextTVI := blocksToNextTVI * uint64(targetBlockTimeSec)
-					tx.TSpendMeta.VoteEndDate = time.Now().Add(time.Duration(secsTillNextTVI) * time.Second).UTC()
+					tx.TSpendMeta.TVIEndDate = time.Now().Add(time.Duration(secsTillNextTVI) * time.Second).UTC()
+					tx.TSpendMeta.TVIBlockHeight = tipHeight + int64(blocksToNextTVI)
 				} else { // tpsend has been mined
 					tx.TSpendMeta.VoteEndDate = time.Unix(tx.Time.UNIX(), 0).UTC()
 				}

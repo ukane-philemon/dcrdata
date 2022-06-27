@@ -776,6 +776,8 @@ type TreasurySpendMetaData struct {
 	TotalVotes        int64
 	PassPercent       float32
 	Approval          float32
+	TVIEndDate        time.Time
+	TVIBlockHeight    int64
 }
 
 // BlockChainData defines data holding the latest block chain state from the
