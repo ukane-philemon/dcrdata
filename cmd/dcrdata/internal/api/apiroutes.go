@@ -163,8 +163,19 @@ func NewContext(cfg *AppContextConfig) *appContext {
 	}
 }
 
-func (c *appContext) updateNodeConnections() error {
-	nodeConnections, err := c.nodeClient.GetConnectionCount(context.TODO())
+// updateNodeConnections checks and updates node connections. It will attempt to
+// reconnect node client if it has been disconnected.
+func (c *appContext) updateNodeConnections(ctx context.Context) error {
+	if c.nodeClient.Disconnected() {
+		log.Warn("Node client disconnected: Attempting to reconnect")
+		err := c.nodeClient.Connect(ctx, true)
+		if err != nil {
+			// Assume there arr no connections if RPC had an error.
+			c.Status.SetConnections(0)
+			return fmt.Errorf("failed to reconnect node client: %w", err)
+		}
+	}
+	nodeConnections, err := c.nodeClient.GetConnectionCount(ctx)
 	if err != nil {
 		// Assume there arr no connections if RPC had an error.
 		c.Status.SetConnections(0)
@@ -218,7 +229,7 @@ out:
 	keepon:
 		select {
 		case <-rpcCheckTicker.C:
-			if err := c.updateNodeConnections(); err != nil {
+			if err := c.updateNodeConnections(ctx); err != nil {
 				log.Warn("updateNodeConnections: ", err)
 				break keepon
 			}
