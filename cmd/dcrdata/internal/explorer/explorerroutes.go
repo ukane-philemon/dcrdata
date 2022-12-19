@@ -3002,7 +3002,7 @@ func (exp *explorerUI) CalculateStakeReward(w http.ResponseWriter, r *http.Reque
 	}
 
 	poolPercent := homeInfo.PoolInfo.Percentage / 100
-	reward, _ = exp.simulateStakeReturn(amountInDCR, true, poolPercent,
+	reward = exp.simulateStakeReturn(amountInDCR, true, poolPercent,
 		dcrutil.Amount(homeInfo.CoinSupply).ToCoin(), float64(exp.pageData.BlockInfo.Height),
 		currentTicketPrice, durationInDays)
 
