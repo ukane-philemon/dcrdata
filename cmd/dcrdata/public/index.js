@@ -6,19 +6,25 @@ import { Application } from '@hotwired/stimulus'
 import { definitionsFromContext } from '@hotwired/stimulus-webpack-helpers'
 import { darkEnabled } from './js/services/theme_service'
 import globalEventBus from './js/services/event_bus_service'
-
+import * as Turbo from '@hotwired/turbo'
 require('./scss/application.scss')
 
+window.Turbo = Turbo
 window.darkEnabled = darkEnabled
 
 const application = Application.start()
 const context = require.context('./js/controllers', true, /\.js$/)
 application.load(definitionsFromContext(context))
 
-document.addEventListener('turbolinks:load', function (e) {
+document.addEventListener('turbo:load', function (e) {
+  console.log('Turbo!')
   document.querySelectorAll('.jsonly').forEach((el) => {
     el.classList.remove('jsonly')
   })
+})
+
+document.addEventListener('turbolinks:load', function (e) {
+  console.log('Turbolinks!')
 })
 
 export function notifyNewBlock (newBlock) {

@@ -1,4 +1,4 @@
-/* global Turbolinks */
+/* global Turbo */
 import { Controller } from '@hotwired/stimulus'
 import dompurify from 'dompurify'
 import ws from '../services/messagesocket_service'
@@ -74,7 +74,7 @@ export default class extends Controller {
           hasRedirected = true // block consecutive calls.
           const msg = 'Blockchain synchronization complete. You will be redirected to the home page shortly.'
           this.messageTarget.querySelector('h5').textContent = msg
-          setTimeout(() => Turbolinks.visit('/'), 10000)
+          setTimeout(() => Turbo.visit('/'), 10000)
           if (window.Notification.permission === 'granted') {
             const ntfn = new window.Notification('Blockchain Sync Complete', {
               body: msg,
@@ -97,7 +97,7 @@ export default class extends Controller {
 
   _processBlock (blockData) {
     if (this.hasFutureBlockTarget) {
-      Turbolinks.visit(window.location, { action: 'replace' })
+      Turbo.visit(window.location, { action: 'replace' })
     }
   }
 }

@@ -1,5 +1,5 @@
 {{define "html-head"}}
-<head data-turbolinks-eval="false">
+<head data-turbo-eval="false">
 	<meta charset="utf-8">
 	<meta name="viewport" content="width=device-width, initial-scale=1">
 	{{/* The above meta tags *must* come first in the head */ -}}
@@ -49,7 +49,7 @@
 		<meta name="msapplication-config" content="/images/favicon/browserconfig.xml?v=65tv3">
 	<!-- End custom favicon -->
 
-	<meta name="turbolinks-cache-control" content="no-cache">
+	<meta name="turbo-cache-control" content="no-cache">
 	<title>{{.Title}}</title>
 
 	<link rel="preload" href="/fonts/icomoon.ttf?g003m6" as="font" type="font/ttf" crossorigin="anonymous" />
@@ -61,9 +61,26 @@
 	<link rel="preload" href="/images/connected.svg?x=65tv3" as="image" type="image/svg+xml" />
 	<link rel="preload" href="/images/disconnected.svg?x=65tv3" as="image" type="image/svg+xml" />
 
-	<link href="/dist/css/style.d8a442444300a678.css" rel="stylesheet">
+	<!-- Stylesheet -->
+	<link 
+		href="/dist/css/style.d8a442444300a678.css"
+		rel="stylesheet"
+		data-turbo-track="reload"
+	>
 
-	<script src="/js/vendor/turbolinks.min.js?v=65DCG"></script>
+	<!-- Javascript -->
+	<script
+		src="/dist/js/4.ff06ad625d5f1157.bundle.js"
+		data-turbo-eval="false"
+		data-turbo-suppress-warning
+		data-turbo-track="reload"
+	></script>
+	<script
+		src="/dist/js/app.af4f712f738458a1.bundle.js"
+		data-turbo-eval="false"
+		data-turbo-suppress-warning
+		data-turbo-track="reload"
+	></script>
 </head>
 {{end}}
 
@@ -92,7 +109,7 @@
 			/>
 			<button class="search-bttn" type="submit"><span class="dcricon-search"></span></button>
 		</form>
-		<nav id="hamburger-menu" data-controller="menu" data-turbolinks-permanent>
+		<nav id="hamburger-menu" data-controller="menu" data-turbo-permanent>
 			<div id="menu-toggle">
 				<input type="checkbox" data-menu-target="toggle" data-action="change->menu#toggle"/>
 				<span class="patty"></span>
@@ -129,7 +146,7 @@
 								</div>
 						</button>
 					</form>
-					<a class="menu-item jsonly" data-keynav-skip data-turbolinks="false" href="#" id="keynav-toggle">
+					<a class="menu-item jsonly" data-keynav-skip data-turbo="false" href="#" id="keynav-toggle">
 						<span class="text">Enable Hot Keys</span><span class="keys-hint">(&nbsp;&nbsp;<span class="arrows"> &#8592;<br>&#8594;</span>&nbsp;&nbsp;enter&nbsp;&nbsp;\&nbsp;&nbsp;=&nbsp;&nbsp;)</span>
 					</a>
 					<a class="menu-item" data-keynav-skip href="{{.Links.APIDocs}}" title="API Endpoints" target="_blank" rel="noopener noreferrer">JSON API Docs</a>
@@ -173,7 +190,7 @@
 		<span
 			id="connection"
 			class="text-nowrap align-items-center clickable d-inline-block"
-			data-turbolinks-permanent
+			data-turbo-permanent
 			data-controller="connection"
 			data-connection-target="indicator"
 			data-action="click->connection#requestNotifyPermission"
@@ -181,16 +198,6 @@
 			><span class="d-none d-sm-inline" data-connection-target="status">Connecting <span class="d-none d-md-inline-block">to WebSocket...</span></span><div></div>
 		</span>
 	</div>
-	<script
-		src="/dist/js/4.ff06ad625d5f1157.bundle.js"
-		data-turbolinks-eval="false"
-		data-turbolinks-suppress-warning
-	></script>
-	<script
-		src="/dist/js/app.ba2620d5445760b1.bundle.js"
-		data-turbolinks-eval="false"
-		data-turbolinks-suppress-warning
-	></script>
 </footer>
 {{end}}
 

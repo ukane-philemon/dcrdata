@@ -1,5 +1,5 @@
 import { Controller } from '@hotwired/stimulus'
-import TurboQuery from '../helpers/turbolinks_helper'
+import TurboQuery from '../helpers/turbo_helper'
 import { getDefault } from '../helpers/module_helper'
 import { requestJSON } from '../helpers/http'
 import humanize from '../helpers/humanize_helper'

@@ -1,54 +1,20 @@
-/* global Turbolinks */
+/* global Turbo */
 import Url from 'url-parse'
 
-export default class TurboQuery {
-  constructor (turbolinks) {
+export default class TurboQuery extends Turbo {
+  constructor () {
+    super()
     const tq = this
-    tq.replaceTimer = 0
-    tq.appendTimer = 0
-    tq.turbolinks = turbolinks || Turbolinks || false
-    if (!tq.turbolinks || !tq.turbolinks.supported) {
-      console.error('No passed or global Turbolinks instance detected. TurboQuery requires Turbolinks.')
-      return
-    }
-    // These are timer callbacks. Bind them to the TurboQuery instance.
-    tq.replaceHistory = tq._replaceHistory.bind(tq)
-    tq.appendHistory = tq._appendHistory.bind(tq)
     tq.url = Url(window.location.href, true)
   }
 
-  replaceHref () {
-    // Rerouting through timer to prevent spamming.
-    // Turbolinks blocks replacement if frequency too high.
-    if (this.replaceTimer === 0) {
-      this.replaceTimer = setTimeout(this.replaceHistory, 250)
-    }
-  }
-
   toHref () {
-    if (this.appendTimer === 0) {
-      this.appendTimer = setTimeout(this.appendHistory, 250)
-    }
-  }
-
-  _replaceHistory () {
-    // see https://github.com/turbolinks/turbolinks/issues/219. This also works:
-    // window.history.replaceState(window.history.state, this.addr, this.url.href)
-    this.turbolinks.controller.replaceHistoryWithLocationAndRestorationIdentifier(this.turbolinks.Location.wrap(this.url.href), this.turbolinks.uuid())
-    this.replaceTimer = 0
-  }
-
-  _appendHistory () {
-    // same as replaceHref, but creates a new entry in history for navigating
-    // with the browsers forward and back buttons. May still not work because of
-    // TurboLinks caching behavior, I think.
-    this.turbolinks.controller.pushHistoryWithLocationAndRestorationIdentifier(this.turbolinks.Location.wrap(this.url.href), this.turbolinks.uuid())
-    this.appendTimer = 0
+    this.visit(this.url.href)
   }
 
   replace (query) {
     this.url.set('query', this.filteredQuery(query))
-    this.replaceHref()
+    this.visit(this.url.href, { action: 'replace' })
   }
 
   to (query) {

@@ -1,4 +1,4 @@
-/* global Turbolinks */
+/* global Turbo */
 import { toggleMenu, toggleSun, closeMenu } from '../services/theme_service'
 import { setCookie } from './cookie_service'
 import Mousetrap from 'mousetrap'
@@ -130,7 +130,7 @@ Mousetrap.bind('enter', function (e) {
       jumpToIndexOnLoad = currentIndex
     }
     currentTarget.classList.add('activated')
-    Turbolinks.visit(location)
+    Turbo.visit(location)
   }
 })
 
@@ -169,7 +169,7 @@ if (keyNavEnabled()) {
 
 keyNavToggle.querySelector('.text').textContent = keyNavEnabled() ? 'Disable Hot Keys' : 'Enable Hot Keys'
 
-document.addEventListener('turbolinks:load', function (e) {
+document.addEventListener('turbo:load', function (e) {
   closeMenu(e)
   if (keyNavEnabled()) {
     keyNav(e, true)
@@ -178,7 +178,7 @@ document.addEventListener('turbolinks:load', function (e) {
 
 keyNavToggle.addEventListener('click', (e) => {
   if (e.offsetX === 0) {
-    // prevent duplicate click handling when turbolinks re-attaches handlers
+    // prevent duplicate click handling when Turbo re-attaches handlers
     // TODO find a more semantic way to deal with this
     return
   }
