@@ -725,13 +725,26 @@ func _main(ctx context.Context) error {
 	webMux.With(explore.SyncStatusAPIIntercept).Group(func(r chi.Router) {
 		// Mount the dcrdata's REST API.
 		r.Mount("/api", apiMux.Mux)
-		// Setup and mount the Insight API.
+		// Mount the versioned dcrdata REST API.
+		for _, ver := range apiMux.Versions() {
+			versionPrefix := fmt.Sprintf("/api/v%d", ver)
+			r.Use(mw.APIVersionCtx(uint32(ver)))
+			r.Mount(versionPrefix, apiMux.Mux)
+		}
+
+		// Setup the Insight API.
 		insightApp := insight.NewInsightAPI(dcrdClient, chainDB,
 			activeChain, mpm, cfg.IndentJSON, app.Status)
 		insightApp.SetReqRateLimit(cfg.InsightReqRateLimit)
 		insightMux := insight.NewInsightAPIRouter(insightApp, cfg.UseRealIP,
 			cfg.CompressAPI, cfg.MaxCSVAddrs)
 		r.Mount("/insight/api", insightMux.Mux)
+		// Mount the versioned dcrdata insight REST API.
+		for _, ver := range insightMux.Versions() {
+			r.Use(mw.APIVersionCtx(uint32(ver)))
+			insightVersionPrefix := fmt.Sprintf("/insight/api/v%d", ver)
+			r.Mount(insightVersionPrefix, insightMux.Mux)
+		}
 
 		if insightSocketServer != nil {
 			r.With(mw.NoOrigin).Get("/insight/socket.io/", insightSocketServer.ServeHTTP)

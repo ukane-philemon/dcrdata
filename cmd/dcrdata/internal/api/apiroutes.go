@@ -157,7 +157,7 @@ func NewContext(cfg *AppContextConfig) *appContext {
 		xcBot:       cfg.XcBot,
 		AgendaDB:    cfg.AgendasDBInstance,
 		ProposalsDB: cfg.ProposalsDB,
-		Status:      apitypes.NewStatus(uint32(nodeHeight), conns, APIVersion, cfg.AppVer, cfg.Params.Name),
+		Status:      apitypes.NewStatus(uint32(nodeHeight), conns, currentAPIVersion, cfg.AppVer, cfg.Params.Name),
 		maxCSVAddrs: cfg.MaxAddrs,
 		charts:      cfg.Charts,
 	}

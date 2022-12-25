@@ -60,6 +60,7 @@ const (
 	ctxXcToken
 	ctxStickWidth
 	ctxIndent
+	ctxAPIVersion
 )
 
 type DataSource interface {
@@ -1100,4 +1101,23 @@ func RetrieveStickWidthCtx(r *http.Request) string {
 		return ""
 	}
 	return bin
+}
+
+// APIVersionCtx sets the APIVersion of this request.
+func APIVersionCtx(version uint32) func(next http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			r = r.WithContext(context.WithValue(r.Context(), ctxAPIVersion, version))
+			next.ServeHTTP(w, r)
+		})
+	}
+}
+
+// RetrieveAPIVersion tries to fetch the APIVersion from the request context.
+func RetrieveAPIVersion(r *http.Request) uint32 {
+	version, ok := r.Context().Value(ctxAPIVersion).(uint32)
+	if !ok {
+		return 0
+	}
+	return version
 }
