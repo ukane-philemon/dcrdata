@@ -147,6 +147,10 @@ select.dropdown {
   width: 100px;
 }
 
+select:only-child select {
+  display: none;
+}
+
 span.separator {
   border-right: 1px #6c757d solid;
 }
