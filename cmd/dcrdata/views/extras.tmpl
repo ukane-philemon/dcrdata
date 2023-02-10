@@ -7,6 +7,9 @@
 	<meta name="author" content="The Decred developers">
 	<meta name="application-name"           content="dcrdata - The Decred Block Explorer">
 	<meta name="apple-mobile-web-app-title" content="dcrdata - The Decred Block Explorer">
+	{{if .Data.Links.OnionURL}}
+	<meta http-equiv="onion-location" content="http://{{.Data.Links.OnionURL}}.onion" />
+	{{end}}
 
 	<meta name="twitter:card" content="summary"/>
 	<meta name="twitter:title" content="dcrdata - The Decred Block Explorer"/>
