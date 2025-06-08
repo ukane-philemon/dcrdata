@@ -1488,13 +1488,11 @@ func (exp *explorerUI) TreasuryPage(w http.ResponseWriter, r *http.Request) {
 		Data        *TreasuryInfo
 		FiatBalance *exchanges.Conversion
 		Pages       []pageNumber
-		Mempool     *types.MempoolInfo
 	}{
 		CommonPageData: exp.commonData(r),
 		Data:           treasuryData,
 		FiatBalance:    exp.xcBot.Conversion(dcrutil.Amount(treasuryBalance.Balance).ToCoin()),
 		Pages:          calcPages(int(typeCount), int(limitN), int(offset), linkTemplate),
-		Mempool:        exp.MempoolInventory(),
 	}
 	str, err := exp.templates.exec("treasury", pageData)
 	if err != nil {
@@ -1708,8 +1706,7 @@ func (exp *explorerUI) TreasuryTable(w http.ResponseWriter, r *http.Request) {
 	bal := exp.pageData.HomeInfo.TreasuryBalance
 	exp.pageData.RUnlock()
 
-	linkTemplate := "/treasury" + "?start=%d&n=" + strconv.FormatInt(limitN, 10) + "&txntype=" + fmt.Sprintf("%s", txTypeStr)
-
+	linkTemplate := fmt.Sprintf("/treasury?start=%%d&n=%d&txntype=%s", limitN, txTypeStr)
 	response := struct {
 		TxnCount int64        `json:"tx_count"`
 		HTML     string       `json:"html"`
