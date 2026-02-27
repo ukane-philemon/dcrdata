@@ -1033,7 +1033,7 @@ type BinancePriceResponse struct {
 //	]
 //
 // ]
-type CandlestickResponse [][]interface{}
+type CandlestickResponse [][]any
 
 func badStickElement(key string, element interface{}) Candlesticks {
 	log.Errorf("Unable to decode %s from candlestick: %T: %v", key, element, element)
@@ -2016,7 +2016,7 @@ type KucoinPriceResponse struct {
 // ]
 type KucoinCandlestickResponse struct {
 	// Code string `json:"code"`
-	Data [][]interface{} `json:"data"`
+	Data [][]string `json:"data"`
 }
 
 func (r KucoinCandlestickResponse) translate() Candlesticks {
@@ -2026,58 +2026,34 @@ func (r KucoinCandlestickResponse) translate() Candlesticks {
 			log.Error("Unable to decode candlestick response. Not enough elements.")
 			return Candlesticks{}
 		}
-		unixMsStr, ok := rawStick[0].(string)
-		if !ok {
-			return badStickElement("start time", rawStick[0])
-		}
 
-		unixMsFlt, err := strconv.Atoi(unixMsStr)
+		unixMsFlt, err := strconv.Atoi(rawStick[0])
 		if err != nil {
 			return badStickElement("start time", err)
 		}
 		startTime := time.Unix(int64(unixMsFlt/1e3), 0)
 
-		openStr, ok := rawStick[1].(string)
-		if !ok {
-			return badStickElement("open", rawStick[1])
-		}
-		open, err := strconv.ParseFloat(openStr, 64)
+		open, err := strconv.ParseFloat(rawStick[1], 64)
 		if err != nil {
 			return badStickElement("open float", err)
 		}
 
-		closeStr, ok := rawStick[2].(string)
-		if !ok {
-			return badStickElement("close", rawStick[4])
-		}
-		close, err := strconv.ParseFloat(closeStr, 64)
+		close, err := strconv.ParseFloat(rawStick[2], 64)
 		if err != nil {
 			return badStickElement("close float", err)
 		}
 
-		highStr, ok := rawStick[3].(string)
-		if !ok {
-			return badStickElement("high", rawStick[2])
-		}
-		high, err := strconv.ParseFloat(highStr, 64)
+		high, err := strconv.ParseFloat(rawStick[3], 64)
 		if err != nil {
 			return badStickElement("high float", err)
 		}
 
-		lowStr, ok := rawStick[4].(string)
-		if !ok {
-			return badStickElement("low", rawStick[3])
-		}
-		low, err := strconv.ParseFloat(lowStr, 64)
+		low, err := strconv.ParseFloat(rawStick[4], 64)
 		if err != nil {
 			return badStickElement("low float", err)
 		}
 
-		volumeStr, ok := rawStick[5].(string)
-		if !ok {
-			return badStickElement("volume", rawStick[5])
-		}
-		volume, err := strconv.ParseFloat(volumeStr, 64)
+		volume, err := strconv.ParseFloat(rawStick[5], 64)
 		if err != nil {
 			return badStickElement("volume float", err)
 		}
